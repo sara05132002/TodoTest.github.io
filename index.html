@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style type="text/css">
+    .container{
+        width: 100%;
+    }
+    .input ,.menu{
+        max-width: 500px;
+        margin: auto;
+        line-height: 50px;
+    }
+    .input{
+        background-color: #F7F5AD;
+        border-radius: 10px;
+    }
+    input{
+        font-size: 15px;
+        margin-right: 10px;
+        margin-left: 10px;
+        vertical-align: middle;
+        width: 30%;
+    }
+    button{
+        width: 12%;
+        font-size: 15px;
+        vertical-align: middle;
+        border-radius: 10px;
+        margin-right: 1%;
+        border: none;
+        background-color: #FAEB5B;
+
+    }
+    .menuItem{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;       
+    }
+    .number{
+        width: 30px;
+        height: 30px;
+        margin-right: 5%;
+        line-height: 30px;
+        background-color: #014c45;
+        border-radius: 99em;
+        text-align: center;
+        color: #fff;
+    }
+    .type{
+        width: 20%;
+        height: 30px;
+        line-height: 30px;
+        border-radius: 99em;
+        background-color: #FAEB5B;
+        text-align: center;
+        margin-right: 5%;
+    }
+    .menuItem > .title{
+        width: 30%;
+        text-align: center;
+        color: #000;
+        text-decoration: none;
+    }
+    .edit{
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        background-color: #55D0A9; 
+        font-size: 13px;
+        margin-right: 5%;
+        text-align: center;
+    }
+    .delete{
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        background-color: #EE6600;
+        font-size: 13px;
+        color: #fff;
+        text-align: center;
+    }
+    
+    
+    
+</style>
+<body>
+    <div id="app">
+        <section v-if="loading">
+            Loading...
+        </section>
+        <section v-else>
+            <div class="container">
+                <div class="title">
+                    <div class="input" style="font-size: 0px;">
+                        <input type="text" placeholder="會員名稱" v-model.trim="input.name">
+                        <input type="text" placeholder="電子信箱" v-model.trim="input.email">                       
+                        <button @click="submitHandler">送出</button>
+                        <button @click="cancelHandler">取消</button>
+                    </div>
+                    <div class="menu">
+                        <div class="menuItem" v-for="(item,index) in contacts">
+                            <span class="number">{{ item.id }}</span>
+                            <span class="type">{{ item.name }}</span>
+                            <a :href="'mailto:'+item.email" target="vue-iron" class="title">
+                                {{ item.email}}
+                            </a>
+                            <span class="edit" @click="editHandler(index)">修改</span>
+                            <span class="delete" @click="deleteHandler(index)">刪除</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.10/vue.js'></script>
+    <script>
+        ; (function(Vue){
+            new Vue({
+                el:'#app',
+                data:{
+                    loading:false,
+                    contacts: [],
+                    editIndex:null,//防止送出後做的動作是submitHandler新增一筆
+                    input:{
+                        name:'',
+                        email:''
+                    }                
+                },
+                methods:{
+                    submitHandler(){
+                        let {name,email}=this.input //解構
+                        if(!name || !email) return
+                        this.loading=true
+                        if(this.editIndex == null){//如果是空值，代表要做的動作是新增
+                           axios.post('http://localhost:8888/contact', this.input )
+                            .then((res)=>{
+                                this.contacts.push(res.data)//push上去JSON檔
+                                this.cancelHandler()//清空
+                                this.loading=false
+                            }).catch((err)=>{
+                                console.log(err)
+                            }) 
+                        }else{
+                            let {id}=this.contacts[this.editIndex]
+                            axios.put('http://localhost:8888/contact/'+id,this.input)
+                            .then((res)=>{
+                                this.contacts[this.editIndex]=res.data
+                                this.cancelHandler()
+                                this.loading=false
+                            }).catch((err)=>{
+                                console.log(err)
+                            })
+                        }
+                        
+                    },
+                    cancelHandler(){
+                        this.editIndex=null
+                        this.input.name=''
+                        this.input.email=''
+
+                        // this.input={
+                        //     name='',
+                        //     email=''
+                        // }
+                    },
+                    deleteHandler(index){
+                        let target=this.contacts[index]
+                        if(confirm("是否刪除 ${target.name} ?")){
+                            this.loading=true
+                            axios.delete('http://localhost:8888/contact/'+target.id)
+                            .then((res)=>{
+                                //delete後會傳空值，所以做下面刪除
+                                this.contacts.splice(index,1)
+                                this.cancelHandler()//清空
+                                this.loading=false
+                            }).catch((err)=>{
+                                console.log(err)
+                            })
+                        }
+                    },
+                    editHandler(index){
+                        let {name,email}=this.contacts[index]
+                        //this.input.name=this.contacts[index].name  解構前
+                        //this.input.name=name  解構後
+
+
+                        this.editIndex=index//修改時知道是哪一筆要被修
+                        //重構
+                        this.input={
+                            name,
+                            email
+                        }
+                    }
+                },
+                mounted(){
+                    this.loading=true
+                    axios.get('http://localhost:8888/contact')
+                    .then((res)=>{
+                        this.contacts=res.data
+                        this.loading=false
+                    }).catch((err)=>{
+                        console.log(err)
+                    })
+                }
+            })
+        })(Vue)
+    </script>
+</body>
+</html>
